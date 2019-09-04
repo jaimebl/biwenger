@@ -6,7 +6,6 @@ import requests_cache
 
 AUTH_TOKEN = 'YOUR_TOKEN_HERE'
 
-
 def fetch_full_board():
     h = {'x-lang': 'es', 'x-league': '890435', 'x-user': '4095989', 'Authorization': AUTH_TOKEN}
     return \
@@ -131,9 +130,7 @@ fullBoard = fetch_full_board()
 league = fetch_league()
 
 for standing in league['standings']:
-    print('#####################################')
-    print('Calculating team: %s' % standing['name'])
-    print('#####################################')
+    print('\n\t\t\t<< %s >>\n' % standing['name'])
 
     team = fetch_team(standing['id'])
     players = [fetch_player(player['id']) for player in team['players']]
@@ -172,21 +169,22 @@ for standing in league['standings']:
                     'priceIncrementRelative': player['priceIncrement'] / player['price'] * 100} for player in players]
     playersData.sort(key=lambda x: x['priceIncrementRelative'], reverse=True)
 
+    print('################################################################')
     print('\tValor equipo inicial: %s' % (money(startSoldPlayersAmount + startNotSoldPlayersAmount)))
     print('\tJugadores Vendidos: %s' % money(soldPlayersAmount + soldByAdminPlayersAmount))
     print('\tJugadores Comprados: %s' % money(boughtPlayersAmount))
     print('\tPremios: %s' % money(awardsAmount))
-    print('\tMax Overbid: %s - %s - %i%%' % (
+    print('\tMax Overbid: %s - %s (%i%%)' % (
         fetch_player(max_overbid_player['player'])['name'], money(max_overbid_player['overbid']), max_overbid_player['overbidPercent']))
-    print('\t#####################################')
-    [print('\t%s \t%s \t%s \t%.2f%%' % (
+    print('################################################################')
+    [print('%22s \t%11s \t%8s \t%6.2f%%' % (
         playerData['name'], money(playerData['price']), money(playerData['priceIncrement']),
         playerData['priceIncrementRelative'])) for playerData in playersData]
-    print('\t#####################################')
-    print('\t######  Caja: %s (Maxima puja: %s)  ' % ((money(cash)), money(maxBid)))
-    print('\t######  Valor de equipo: %s ' % (money(teamValue)))
-    print('\t######  Incremento diario total: %s ' % (money(dailyTotalIncrement)))
-    print('\t######  Total: %s           ' % (money(cash + teamValue)))
-    print('\t#####################################')
+    print('################################################################')
+    print('\tCaja: %s (Maxima puja: %s)  ' % ((money(cash)), money(maxBid)))
+    print('\tValor de equipo: %s ' % (money(teamValue)))
+    print('\tIncremento diario: %s ' % (money(dailyTotalIncrement)))
+    print('\tTotal: %s           ' % (money(cash + teamValue)))
+    print('################################################################\n')
 
 # print(fullBoard)
