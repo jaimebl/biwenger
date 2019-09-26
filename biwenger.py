@@ -29,10 +29,18 @@ def get_sold_initial_players(team, full_board):
     bought_players = [content['player'] for movement in full_board if movement['type'] == 'market'
                       for content in movement['content'] if content['to']['id'] == team['id']]
 
-    return [content['player']
+    return [bClient.player(content['player'])
             for movement in full_board if movement['type'] == 'transfer'
             for content in movement['content'] if
             content['from']['id'] == team['id'] and content['player'] not in bought_players]
+
+
+def get_not_sold_starting_players(team):
+    return [bClient.player(player['id']) for player in team['players'] if player['owner']['price'] == 0]
+
+
+def get_starting_players(team, full_board):
+    return get_sold_initial_players(team, full_board) + get_not_sold_starting_players(team);
 
 
 def get_awards_amount(team, full_board):
@@ -40,10 +48,6 @@ def get_awards_amount(team, full_board):
         [result['bonus'] for movement in full_board if movement['type'] == 'roundFinished'
          for result in movement['content']['results'] if result['user']['id'] == team['id'] and 'bonus' in result]
     )
-
-
-def get_starting_players(team):
-    return [player['id'] for player in team['players'] if player['owner']['price'] == 0]
 
 
 def day_before(millis_date):
@@ -83,6 +87,50 @@ def millis_to_formatted_date(millis):
     return int(millis_to_date(millis).strftime("%y%m%d"))
 
 
+def pretty_date(time=False):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    from datetime import datetime
+    now = datetime.now()
+    if type(time) is int:
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time, datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+    second_diff = diff.seconds
+    day_diff = diff.days
+
+    if day_diff < 0:
+        return ''
+
+    if day_diff == 0:
+        if second_diff < 10:
+            return "just now"
+        if second_diff < 60:
+            return str(second_diff) + " seconds ago"
+        if second_diff < 120:
+            return "a minute ago"
+        if second_diff < 3600:
+            return str(round(second_diff / 60)) + " minutes ago"
+        if second_diff < 7200:
+            return "an hour ago"
+        if second_diff < 86400:
+            return str(round(second_diff / 3600)) + " hours ago"
+    if day_diff == 1:
+        return "Yesterday"
+    if day_diff < 7:
+        return str(day_diff) + " days ago"
+    if day_diff < 31:
+        return str(round(day_diff / 7)) + " weeks ago"
+    if day_diff < 365:
+        return str(round(day_diff / 30)) + " months ago"
+    return str(round(day_diff / 365)) + " years ago"
+
+
 # def team_value_by_date(team, date):
 #     teamPlayers = [player['id'] for player in team['players']]
 #
@@ -104,42 +152,55 @@ def get_player_cash(team, full_board):
     bought_players_amount = get_bought_players_amount(team, full_board)
     awards_amount = get_awards_amount(team, full_board)
 
-    start_not_sold_players = [price[1] for player in get_starting_players(team)
-                              for price in bClient.player(player)['prices'] if price[0] == join_date]
+    start_not_sold_players = [price[1] for player in get_not_sold_starting_players(team)
+                              for price in player['prices'] if price[0] == join_date]
     start_not_sold_players_amount = sum(start_not_sold_players)
 
     start_sold_players = [price[1] for player in get_sold_initial_players(team, full_board)
-                          for price in bClient.player(player)['prices'] if price[0] == join_date]
+                          for price in player['prices'] if price[0] == join_date]
     start_sold_players_amount = sum(start_sold_players)
 
     return (40000000 - start_not_sold_players_amount - start_sold_players_amount) \
            + sold_players_amount + sold_by_admin_players_amount + awards_amount - bought_players_amount
 
 
-def players_ranking(full_board, league):
+def players_ranking():
+    full_board = bClient.full_board()
+    league = bClient.league()
+
     ranking = []
     for standing in league['standings']:
         team = bClient.team(standing['id'])
+
+        daily_increment = sum([bClient.player(player['id'])['priceIncrement'] for player in team['players']])
+
+        last_access = pretty_date(team['lastAccess'])
 
         cash = get_player_cash(team, full_board)
         team_value = [standing['teamValue'] for standing in league['standings'] if standing['id'] == team['id']][0]
         max_bid = cash + (team_value / 4)
 
         ranking.append({'name': team['name'], 'cash': cash, 'teamValue': team_value, 'totalValue': cash + team_value,
-                        'maxBid': max_bid})
+                        'maxBid': max_bid, 'dailyIncrement': daily_increment, 'lastAccess': last_access})
 
     ranking.sort(key=lambda x: x['totalValue'], reverse=True)
-    print('%22s \t%11s \t%11s \t%11s \t%11s' % ('Name', 'Total Value', 'Team Value', 'Cash', 'Max Bid'))
-    [print('%22s \t%11s \t%11s \t%11s \t%11s' % (
+    print('%16s \t%11s \t%11s \t%11s \t%11s \t%9s \t%15s' % (
+        'Name', 'Total Value', 'Team Value', 'Cash', 'Max Bid', 'Daily Inc', 'Last Access'))
+    [print('%16s \t%11s \t%11s \t%11s \t%11s \t%9s \t%15s' % (
         player['name'],
         money(player['totalValue']),
         money(player['teamValue']),
         money(player['cash']),
-        money(player['maxBid'])))
+        money(player['maxBid']),
+        money(player['dailyIncrement']),
+        player['lastAccess']))
      for player in ranking]
 
 
-def analyze_teams(full_board, league):
+def analyze_teams():
+    full_board = bClient.full_board()
+    league = bClient.league()
+
     for standing in league['standings']:
         print('\n\t\t\t<< %s >>\n' % standing['name'])
 
@@ -162,9 +223,8 @@ def analyze_teams(full_board, league):
         # diffTeamValue = team_value_by_date(team, date.today()) - team_value_by_date(team, yesterday)
         daily_total_increment = reduce(lambda x, y: x + y['priceIncrement'], players, 0)
 
-        players_data = [{**player, 'priceIncrementRelative': player['priceIncrement'] / player['price'] * 100} for
-                        player
-                        in players]
+        players_data = [{**player, 'priceIncrementRelative': player['priceIncrement'] / player['price'] * 100}
+                        for player in players]
         players_data.sort(key=lambda x: x['priceIncrementRelative'], reverse=True)
 
         print('################################################################')
@@ -175,7 +235,7 @@ def analyze_teams(full_board, league):
             bClient.player(max_overbid_player['player'])['name'], money(max_overbid_player['overbid']),
             max_overbid_player['overbidPercent']))
         print('################################################################')
-        [print('%22s \t%11s \t%8s \t%6.2f%%' % (
+        [print('%22s \t%11s \t%9s \t%6.2f%%' % (
             playerData['name'], money(playerData['price']), money(playerData['priceIncrement']),
             playerData['priceIncrementRelative'])) for playerData in players_data]
         print('################################################################')
@@ -184,6 +244,81 @@ def analyze_teams(full_board, league):
         print('\tIncremento diario: %s ' % (money(daily_total_increment)))
         print('\tTotal: %s           ' % (money(cash + team_value)))
         print('################################################################\n')
+
+
+def get_team_id(content):
+    if 'from' in content.keys():
+        return content['from']['id']
+    elif 'to' in content.keys():
+        return content['to']['id']
+    else:
+        return 'unknown'
+
+
+def map_movement(movement_type):
+    if movement_type == 'transfer' or movement_type == 'adminTransfer':
+        return 'sell'
+    elif movement_type == 'market':
+        return 'buy'
+    else:
+        return 'unknown'
+
+
+def get_historic_price(player, date):
+    return  [price[1] for price in player['prices'] if price[0] == date][0]
+
+
+def trade_history():
+    full_board = bClient.full_board()
+    league = bClient.league()
+
+    for standing in league['standings']:
+        print('\n\t\t\t<< %s >>\n' % standing['name'])
+        team = bClient.team(standing['id'])
+        join_date = millis_to_formatted_date(team['joinDate'])
+
+        # get team movements
+        movements = [{'movementType': map_movement(movement['type']),
+                      'amount': content['amount'],
+                      'player': bClient.player(content['player'])}
+                     for movement in reversed(full_board) if movement['type'] in ['transfer', 'adminTransfer', 'market']
+                     for content in movement['content'] if get_team_id(content) == standing['id']]
+
+        # initialize history with starting and bought players
+        history = [{'player': player, 'buyAmount': get_historic_price(player, join_date), 'sellAmount': None, 'owned': True}
+                   for player in get_starting_players(team, full_board)] + \
+                  [{'player': movement['player'], 'buyAmount': movement['amount'], 'sellAmount': None, 'owned': True}
+                   for movement in movements if movement['movementType'] == 'buy']
+
+        # update history for sold players
+        for movement in movements:
+            if movement['movementType'] == 'sell':
+                for idx, history_movement in enumerate(history):
+                    if history_movement['player']['id'] == movement['player']['id'] \
+                            and history_movement['sellAmount'] is None:
+                        history[idx] = {**history_movement, 'sellAmount':  movement['amount'], 'owned': False}
+                        break
+
+        # update history for non sold players
+        history = [{**history_player, 'sellAmount': history_player['player']['price']}
+                    if history_player['sellAmount'] is None else history_player
+                    for history_player in history]
+
+        history.sort(key=lambda x: x['sellAmount'] - x['buyAmount'], reverse=True)
+
+        print('%26s %13s %13s %13s ' % ('Player', 'Initial', 'Final', 'Profit'))
+        [print('%22s%4s %13s %13s %13s ' %
+               (history_player['player']['name'],
+                '(x)' if history_player['owned'] else '',
+                money(history_player['buyAmount']),
+                money(history_player['sellAmount']),
+                money(history_player['sellAmount'] - history_player['buyAmount'])))
+         for history_player in history]
+
+        total = sum([history_player['sellAmount'] - history_player['buyAmount']
+                     for history_player in history])
+
+        print('Total: %11s' % money(total))
 
 
 def analyze_offers():
@@ -221,23 +356,5 @@ def analyze_my_players_value():
 
 bClient = BiwengerClient()
 
-# full_board = bClient.full_board()
-# league = bClient.league()
-
 operation = sys.argv[1]
-
-if operation == 'analyze_offers':
-    analyze_offers()
-elif operation == 'analyze_teams':
-    analyze_teams(bClient.full_board(), bClient.league())
-elif operation == 'analyze_my_players_value':
-    analyze_my_players_value()
-elif operation == 'players_ranking':
-    players_ranking(bClient.full_board(), bClient.league())
-else:
-    players_ranking(bClient.full_board(), bClient.league())
-
-# analyze_teams(full_board, league)
-# analyze_offers()
-# analyze_my_players_value()
-# players_ranking(full_board, league)
+locals()[sys.argv[1]]()
