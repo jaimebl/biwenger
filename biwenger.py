@@ -313,7 +313,7 @@ def analyze_teams():
                f'\t{playerData["priceIncrementRelative"]:>6.2f}%'
                f'\t{playerData["performance_avg_global"]:>6.2f}({playerData["performance_avg_global_next"]:.2f})'
                f'\t{playerData["performance_avg_recent"]:>6.2f}'
-               f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f}))')
+               f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f})')
          for playerData in players_data]
 
         print('################################################################')
