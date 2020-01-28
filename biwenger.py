@@ -55,12 +55,13 @@ def get_not_sold_starting_players(team):
 
 
 def get_starting_players(team, full_board):
-    return get_sold_initial_players(team['id'], full_board) + get_not_sold_starting_players(team)
+    return list(get_sold_initial_players(team['id'], full_board)) + list(get_not_sold_starting_players(team))
 
 
 def get_awards_amount(team_id, full_board):
-    round_finished_list = (movement['content'] for movement in full_board if is_movement_round_finished(movement))
-    return sum(list(result['bonus'] for content in round_finished_list if not is_duplicated(content, full_board)
+    round_finished_list = [movement['content'] for movement in full_board if is_movement_round_finished(movement)]
+    round_finished_list_no_dupes = [round_finished for n, round_finished in enumerate(round_finished_list) if round_finished['round']['id'] not in [x['round']['id'] for x in  round_finished_list[:n]]]
+    return sum(list(result['bonus'] for content in round_finished_list_no_dupes if not is_duplicated_postponed(content, full_board)
                     for result in content['results'] if result['user']['id'] == team_id and 'bonus' in result))
 
 
@@ -68,7 +69,7 @@ def is_movement_round_finished(movement):
     return movement['type'] == 'roundFinished'
 
 
-def is_duplicated(round_finished, full_board):
+def is_duplicated_postponed(round_finished, full_board):
     return any(round_finished for movement in full_board
                if is_movement_round_finished(movement) and
                movement['content']['round']['name'].startswith(round_finished['round']['name'] + ' '))
@@ -240,25 +241,23 @@ def players_ranking():
                         'maxBid': max_bid, 'dailyIncrement': daily_increment, 'lastAccess': team['lastAccess']})
 
     ranking.sort(key=lambda x: x['totalValue'], reverse=True)
-    print('%16s \t%12s \t%12s \t%11s \t%11s \t%10s \t%15s' % (
-        'Name', 'Total Value', 'Team Value', 'Cash', 'Max Bid', 'Daily Inc', 'Last Access'))
-    [print('%16s \t%12s \t%12s \t%11s \t%11s \t%10s \t%15s (%s)' % (
-        player['name'],
-        money(player['totalValue']),
-        money(player['teamValue']),
-        money(player['cash']),
-        money(player['maxBid']),
-        money(player['dailyIncrement']),
-        pretty_date(player['lastAccess']), millis_to_date(player['lastAccess'])))
-     for player in ranking]
+    print(f'{"Name":>16s} \t{"Total Value":>12s} \t{"Team Value":>12s} \t{"Cash":>11s} \t{"Max Bid":>11s} \t{"Daily Inc":>10s} \t{"Last Access":>15s}')
 
+    [print(f'{player["name"]:>16s}'
+           f'\t{money(player["totalValue"]):>12s}'
+           f'\t{money(player["teamValue"]):>12s}'
+           f'\t{money(player["cash"]):>12s}'
+           f'\t{money(player["maxBid"]):>12s}'
+           f'\t{money(player["dailyIncrement"]):>10s}'
+           f'\t{pretty_date(player["lastAccess"]):>15s} ({millis_to_date(player["lastAccess"])})')
+     for player in ranking]
 
 def analyze_teams():
     full_board = bClient.full_board()
     league = bClient.league()
 
     for standing in league['standings']:
-        print('\n\t\t\t<< %s >>\n' % standing['name'])
+        print(f'\n\t\t\t<< {standing["name"]} >>\n')
 
         team = bClient.team(standing['id'])
         team_id = int(team['id'])
@@ -300,29 +299,28 @@ def analyze_teams():
         players_data.sort(key=lambda x: x['performance_calculated_next'], reverse=True)
 
         print('################################################################')
-        print('\tJugadores Vendidos: %s' % money(sold_players_amount))
-        print('\tJugadores Comprados: %s' % money(bought_players_amount))
-        print('\tPremios: %s' % money(awards_amount))
-        print('\tMax Overbid: %s - %s (%i%%)' % (
-            max_overbid_player['player']['name'],
-            money(max_overbid_player['overbid']),
-            max_overbid_player['overbidPercent']))
+        print(f'\tJugadores Vendidos: {money(sold_players_amount)}')
+        print(f'\tJugadores Comprados: {money(bought_players_amount)}')
+        print(f'\tPremios: {money(awards_amount)}')
+        print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
+              f'{money(max_overbid_player["overbid"])} '
+              f'({max_overbid_player["overbidPercent"]:.2f}%)')
+
         print('################################################################')
-        [print('%22s %s \t%11s \t%9s \t%6.2f%% \t%6.2f(%.2f) \t%6.2f \t%6.2f(%.2f)' % (
-            playerData['name'], POSITIONS[playerData['position']],
-            money(playerData['price']), money(playerData['priceIncrement']),
-            playerData['priceIncrementRelative'],
-            playerData['performance_avg_global'],
-            playerData['performance_avg_global_next'],
-            playerData['performance_avg_recent'],
-            playerData['performance_calculated'],
-            playerData['performance_calculated_next']))
+        [print(f'{playerData["name"]:>22s} {POSITIONS[playerData["position"]]} '
+               f'\t{money(playerData["price"]):>12s}'
+               f'\t{money(playerData["priceIncrement"]):>9s}'
+               f'\t{playerData["priceIncrementRelative"]:>6.2f}%'
+               f'\t{playerData["performance_avg_global"]:>6.2f}({playerData["performance_avg_global_next"]:.2f})'
+               f'\t{playerData["performance_avg_recent"]:>6.2f}'
+               f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f}))')
          for playerData in players_data]
+
         print('################################################################')
-        print('\tCaja: %s (Maxima puja: %s)  ' % ((money(cash)), money(max_bid)))
-        print('\tValor de equipo: %s ' % (money(team_value)))
-        print('\tIncremento diario: %s ' % (money(daily_total_increment)))
-        print('\tTotal: %s           ' % (money(cash + team_value)))
+        print(f'\tCaja: {money(cash)} (Maxima puja: {money(max_bid)})')
+        print(f'\tValor de equipo: {money(team_value)}')
+        print(f'\tIncremento diario: {money(daily_total_increment)}')
+        print(f'\tTotal: {money(cash + team_value)}')
         print('################################################################\n')
 
 
@@ -349,7 +347,7 @@ def trade_history():
     league = bClient.league()
 
     for standing in league['standings']:
-        print('\n\t\t\t<< %s >>\n' % standing['name'])
+        print(f'\n\t\t\t<< {standing["name"]} >>\n')
         team = bClient.team(standing['id'])
         join_date = millis_to_formatted_date(team['joinDate'])
 
@@ -385,19 +383,17 @@ def trade_history():
 
         history.sort(key=lambda x: x['sellAmount'] - x['buyAmount'], reverse=True)
 
-        print('%26s %13s %13s %13s ' % ('Player', 'Initial', 'Final', 'Profit'))
-        [print('%22s%4s %13s %13s %13s ' %
-               (history_player['player']['name'],
-                '(x)' if history_player['owned'] else '',
-                money(history_player['buyAmount']),
-                money(history_player['sellAmount']),
-                money(history_player['sellAmount'] - history_player['buyAmount'])))
+        print(f'{"Player":>26s}{"Initial":>14s}{"Final":>14s}{"Profit":>14s}')
+        [print(f'{history_player["player"]["name"]:>22s}{"(x)" if history_player["owned"] else "":4s}'
+               f'{money(history_player["buyAmount"]):>14s}'
+               f'{money(history_player["sellAmount"]):>14s}'
+               f'{money(history_player["sellAmount"] - history_player["buyAmount"]):>14s}')
          for history_player in history]
 
         total = sum([history_player['sellAmount'] - history_player['buyAmount']
                      for history_player in history])
 
-        print('Total: %11s' % money(total))
+        print(f'Total: {money(total):>11s}')
 
 
 def get_player_price_yesterday(player):
@@ -412,12 +408,10 @@ def analyze_offers():
 
     offers.sort(key=lambda x: x['offerPercentage'], reverse=True)
 
-    [print('%22s \t%11s(%10s) \t%s \t%6.2f%%' % (
-        offer['player']['name'],
-        money(offer['amount']),
-        money(offer['amount'] - offer['player']['price']),
-        millis_to_date(offer['until']),
-        offer['offerPercentage']))
+    [print(f'{offer["player"]["name"]:>23s}'
+           f'\t{money(offer["amount"]):>13s}({money(offer["amount"] - get_player_price_yesterday(offer["player"])):>10s})'
+           f'\t{millis_to_date(offer["until"])}'
+           f'\t{offer["offerPercentage"]:>6.2f}%')
      for offer in offers]
 
 
@@ -433,8 +427,8 @@ def analyze_my_players_value():
     my_players_info = [{'name': player['name'], 'increments': get_last_increments(player, 40)} for player in my_players]
 
     for player_info in my_players_info:
-        print('%22s\t' % player_info['name'], end='')
-        [print('%6s\t' % increment, end='') for increment in player_info['increments']]
+        print(f'{player_info["name"]:>22s}\t', end='')
+        [print(f'{str(increment):>6s}', end='') for increment in player_info['increments']]
         print('')
 
 
