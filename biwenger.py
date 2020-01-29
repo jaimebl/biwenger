@@ -60,9 +60,15 @@ def get_starting_players(team, full_board):
 
 def get_awards_amount(team_id, full_board):
     round_finished_list = [movement['content'] for movement in full_board if is_movement_round_finished(movement)]
-    round_finished_list_no_dupes = [round_finished for n, round_finished in enumerate(round_finished_list) if round_finished['round']['id'] not in [x['round']['id'] for x in  round_finished_list[:n]]]
-    return sum(list(result['bonus'] for content in round_finished_list_no_dupes if not is_duplicated_postponed(content, full_board)
-                    for result in content['results'] if result['user']['id'] == team_id and 'bonus' in result))
+    round_finished_list_no_dupes = [
+        round_finished for n, round_finished in enumerate(round_finished_list)
+        if round_finished['round']['id'] not in [x['round']['id'] for x in round_finished_list[:n]]
+    ]
+
+    return sum(list(
+        result['bonus'] for content in round_finished_list_no_dupes if not is_duplicated_postponed(content, full_board)
+        for result in content['results'] if result['user']['id'] == team_id and 'bonus' in result
+    ))
 
 
 def is_movement_round_finished(movement):
@@ -241,7 +247,8 @@ def players_ranking():
                         'maxBid': max_bid, 'dailyIncrement': daily_increment, 'lastAccess': team['lastAccess']})
 
     ranking.sort(key=lambda x: x['totalValue'], reverse=True)
-    print(f'{"Name":>16s} \t{"Total Value":>12s} \t{"Team Value":>12s} \t{"Cash":>11s} \t{"Max Bid":>11s} \t{"Daily Inc":>10s} \t{"Last Access":>15s}')
+    print(f'{"Name":>16s} \t{"Total Value":>12s} \t{"Team Value":>12s} '
+          f'\t{"Cash":>11s} \t{"Max Bid":>11s} \t{"Daily Inc":>10s} \t{"Last Access":>15s}')
 
     [print(f'{player["name"]:>16s}'
            f'\t{money(player["totalValue"]):>12s}'
@@ -251,6 +258,7 @@ def players_ranking():
            f'\t{money(player["dailyIncrement"]):>10s}'
            f'\t{pretty_date(player["lastAccess"]):>15s} ({millis_to_date(player["lastAccess"])})')
      for player in ranking]
+
 
 def analyze_teams():
     full_board = bClient.full_board()
