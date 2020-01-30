@@ -39,7 +39,7 @@ def get_bought_players(team_id, full_board):
     diff_dict = Counter(bought_dict)
     diff_dict.subtract(sold_dict)
 
-    return (player_id for player_id in diff_dict if diff_dict[player_id] is not -1)
+    return (player_id for player_id in diff_dict if diff_dict[player_id] != -1)
 
 
 def get_sold_initial_players(team_id, full_board):
@@ -201,8 +201,8 @@ def get_player_price(player, date):
 
 
 def get_global_player_performance(player):
-    avg_points_home = float(player['pointsHome'] / player['playedHome']) if player['playedHome'] is not 0 else 0.0
-    avg_points_away = float(player['pointsAway'] / player['playedAway']) if player['playedAway'] is not 0 else 0.0
+    avg_points_home = float(player['pointsHome'] / player['playedHome']) if player['playedHome'] != 0 else 0.0
+    avg_points_away = float(player['pointsAway'] / player['playedAway']) if player['playedAway'] != 0 else 0.0
 
     return (avg_points_home + avg_points_away) / 2
 
@@ -214,9 +214,9 @@ def is_next_match_home(team):
 def get_global_next_player_performance(player):
     team = player['team']
     if is_next_match_home(team):
-        return float(player['pointsHome'] / player['playedHome']) if player['playedHome'] is not 0 else 0.0
+        return float(player['pointsHome'] / player['playedHome']) if player['playedHome'] != 0 else 0.0
     else:
-        return float(player['pointsAway'] / player['playedAway']) if player['playedAway'] is not 0 else 0.0
+        return float(player['pointsAway'] / player['playedAway']) if player['playedAway'] != 0 else 0.0
 
 
 def get_recent_player_performance(player):
@@ -247,17 +247,17 @@ def players_ranking():
                         'maxBid': max_bid, 'dailyIncrement': daily_increment, 'lastAccess': team['lastAccess']})
 
     ranking.sort(key=lambda x: x['totalValue'], reverse=True)
-    print(f'{"Name":>16s} \t{"Total Value":>12s} \t{"Team Value":>12s} '
-          f'\t{"Cash":>11s} \t{"Max Bid":>11s} \t{"Daily Inc":>10s} \t{"Last Access":>15s}')
+    print(f'{"Name":^16s}|\t{"Total Value":^12s}|\t{"Team Value":^12s}|'
+          f'\t{"Cash":^12s}|\t{"Max Bid":^12s}|\t{"Daily Inc":^10s}|\t{"Last Access":^37s}|')
 
-    [print(f'{player["name"]:>16s}'
-           f'\t{money(player["totalValue"]):>12s}'
-           f'\t{money(player["teamValue"]):>12s}'
-           f'\t{money(player["cash"]):>12s}'
-           f'\t{money(player["maxBid"]):>12s}'
-           f'\t{money(player["dailyIncrement"]):>10s}'
-           f'\t{pretty_date(player["lastAccess"]):>15s} ({millis_to_date(player["lastAccess"])})')
-     for player in ranking]
+    for player in ranking:
+        print(f'{player["name"]:^16s}|'
+              f'\t{money(player["totalValue"]):>12s}|'
+              f'\t{money(player["teamValue"]):>12s}|'
+              f'\t{money(player["cash"]):>12s}|'
+              f'\t{money(player["maxBid"]):>12s}|'
+              f'\t{money(player["dailyIncrement"]):>10s}|'
+              f'\t{pretty_date(player["lastAccess"]):>15s} ({millis_to_date(player["lastAccess"])})|')
 
 
 def analyze_teams():
@@ -306,30 +306,31 @@ def analyze_teams():
         # players_data.sort(key=lambda x: x['priceIncrementRelative'], reverse=True)
         players_data.sort(key=lambda x: x['performance_calculated_next'], reverse=True)
 
-        print('################################################################')
-        print(f'\tJugadores Vendidos: {money(sold_players_amount)}')
+        print('#' * 64)
+        print(f'Jugadores Vendidos: {money(sold_players_amount)}')
         print(f'\tJugadores Comprados: {money(bought_players_amount)}')
         print(f'\tPremios: {money(awards_amount)}')
         print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
               f'{money(max_overbid_player["overbid"])} '
               f'({max_overbid_player["overbidPercent"]:.2f}%)')
 
-        print('################################################################')
-        [print(f'{playerData["name"]:>22s} {POSITIONS[playerData["position"]]} '
-               f'\t{money(playerData["price"]):>12s}'
-               f'\t{money(playerData["priceIncrement"]):>9s}'
-               f'\t{playerData["priceIncrementRelative"]:>6.2f}%'
-               f'\t{playerData["performance_avg_global"]:>6.2f}({playerData["performance_avg_global_next"]:.2f})'
-               f'\t{playerData["performance_avg_recent"]:>6.2f}'
-               f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f})')
-         for playerData in players_data]
+        print('#' * 64)
 
-        print('################################################################')
+        for playerData in players_data:
+            print(f'{playerData["name"]:^20s} {POSITIONS[playerData["position"]]} '
+                  f'\t{money(playerData["price"]):>12s}'
+                  f'\t{money(playerData["priceIncrement"]):>9s}'
+                  f'\t{playerData["priceIncrementRelative"]:>6.2f}%'
+                  f'\t{playerData["performance_avg_global"]:>6.2f}({playerData["performance_avg_global_next"]:.2f})'
+                  f'\t{playerData["performance_avg_recent"]:>6.2f}'
+                  f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f})')
+
+        print('#' * 64)
         print(f'\tCaja: {money(cash)} (Maxima puja: {money(max_bid)})')
         print(f'\tValor de equipo: {money(team_value)}')
         print(f'\tIncremento diario: {money(daily_total_increment)}')
         print(f'\tTotal: {money(cash + team_value)}')
-        print('################################################################\n')
+        print('#' * 64, end='\n\n')
 
 
 def is_team_movement(content, team_id):
@@ -392,11 +393,12 @@ def trade_history():
         history.sort(key=lambda x: x['sellAmount'] - x['buyAmount'], reverse=True)
 
         print(f'{"Player":>26s}{"Initial":>14s}{"Final":>14s}{"Profit":>14s}')
-        [print(f'{history_player["player"]["name"]:>22s}{"(x)" if history_player["owned"] else "":4s}'
-               f'{money(history_player["buyAmount"]):>14s}'
-               f'{money(history_player["sellAmount"]):>14s}'
-               f'{money(history_player["sellAmount"] - history_player["buyAmount"]):>14s}')
-         for history_player in history]
+
+        for history_player in history:
+            print(f'{history_player["player"]["name"]:>22s}{"(x)" if history_player["owned"] else "":4s}'
+                  f'{money(history_player["buyAmount"]):>14s}'
+                  f'{money(history_player["sellAmount"]):>14s}'
+                  f'{money(history_player["sellAmount"] - history_player["buyAmount"]):>14s}')
 
         total = sum([history_player['sellAmount'] - history_player['buyAmount']
                      for history_player in history])
@@ -416,11 +418,11 @@ def analyze_offers():
 
     offers.sort(key=lambda x: x['offerPercentage'], reverse=True)
 
-    [print(f'{offer["player"]["name"]:>23s}'
-           f'\t{money(offer["amount"]):>13s}({money(offer["amount"] - get_player_price_yesterday(offer["player"])):>10s})'
-           f'\t{millis_to_date(offer["until"])}'
-           f'\t{offer["offerPercentage"]:>6.2f}%')
-     for offer in offers]
+    for offer in offers:
+        print(f'{offer["player"]["name"]:^20s}'
+              f'\t{money(offer["amount"]):>13s}({money(offer["amount"] - get_player_price_yesterday(offer["player"])):>10s})'
+              f'\t{millis_to_date(offer["until"])}'
+              f'\t{offer["offerPercentage"]:>6.2f}%')
 
 
 def get_last_increments(player, increments):
@@ -436,7 +438,8 @@ def analyze_my_players_value():
 
     for player_info in my_players_info:
         print(f'{player_info["name"]:>22s}\t', end='')
-        [print(f'{str(increment):>6s}', end='') for increment in player_info['increments']]
+        for increment in player_info['increments']:
+            print(f'{str(increment):>6s}', end='')
         print('')
 
 
