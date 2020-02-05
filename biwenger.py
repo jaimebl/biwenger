@@ -1,7 +1,10 @@
-import sys, statistics
-from functools import reduce
-from datetime import datetime, date, timedelta
 from biwengerClient import BiwengerClient
+from config_parser import properties, load_config
+
+from sys import argv
+from statistics import mean
+from functools import reduce
+from datetime import datetime, timedelta
 from collections import Counter
 
 POSITIONS = {1: 'PT', 2: 'DF', 3: 'MC', 4: 'DL'}
@@ -57,12 +60,14 @@ def get_not_sold_starting_players(team):
 def get_starting_players(team, full_board):
     return list(get_sold_initial_players(team['id'], full_board)) + list(get_not_sold_starting_players(team))
 
+
 def get_round_name(movement):
     return ' '.join(movement['content']['round']['name'].split()[0:2])
 
+
 def get_awards_amount(team_id, full_board):
     round_finished_list = {
-        get_round_name(movement):movement['content']
+        get_round_name(movement): movement['content']
         for movement in reversed(full_board) if movement['type'] == 'roundFinished'
     }
 
@@ -216,7 +221,7 @@ def get_recent_player_performance(player):
     if not fitness_avg: return 0.0
     if len(fitness_avg) == 1: return float(fitness_avg[0])
 
-    return float(statistics.mean(fitness_avg))
+    return float(mean(fitness_avg))
 
 
 def players_ranking():
@@ -423,7 +428,7 @@ def get_last_increments(player, increments):
 
 
 def analyze_my_players_value():
-    my_players = [bClient.player(player['id']) for player in bClient.team(4095989)['players']]
+    my_players = [bClient.player(player['id']) for player in bClient.team(properties['X_USER'])['players']]
     my_players_info = [{'name': player['name'], 'increments': get_last_increments(player, 40)} for player in my_players]
 
     for player_info in my_players_info:
@@ -433,7 +438,8 @@ def analyze_my_players_value():
         print('')
 
 
-bClient = BiwengerClient()
-
-operation = sys.argv[1]
-locals()[sys.argv[1]]()
+if __name__ == '__main__':
+    load_config()
+    bClient = BiwengerClient()
+    operation = argv[1]
+    locals()[operation]()
