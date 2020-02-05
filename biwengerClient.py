@@ -24,7 +24,9 @@ class BiwengerClient:
 
     @classmethod
     def full_board(cls):
-        return cls.make_request('https://biwenger.as.com/api/v2/league/890435/board?type=&limit=99999999999999')
+        return cls.make_request(f'https://biwenger.as.com/api/v2/league/{cls.X_LEAGUE}/board?offset=0&limit=500') + \
+               cls.make_request(f'https://biwenger.as.com/api/v2/league/{cls.X_LEAGUE}/board?offset=500&limit=500')
+
 
     @classmethod
     def team(cls, teamId):
