@@ -57,28 +57,19 @@ def get_not_sold_starting_players(team):
 def get_starting_players(team, full_board):
     return list(get_sold_initial_players(team['id'], full_board)) + list(get_not_sold_starting_players(team))
 
+def get_round_name(movement):
+    return ' '.join(movement['content']['round']['name'].split()[0:2])
 
 def get_awards_amount(team_id, full_board):
-    round_finished_list = [movement['content'] for movement in full_board if is_movement_round_finished(movement)]
-    round_finished_list_no_dupes = [
-        round_finished for n, round_finished in enumerate(round_finished_list)
-        if round_finished['round']['id'] not in [x['round']['id'] for x in round_finished_list[:n]]
-    ]
+    round_finished_list = {
+        get_round_name(movement):movement['content']
+        for movement in reversed(full_board) if movement['type'] == 'roundFinished'
+    }
 
-    return sum(list(
-        result['bonus'] for content in round_finished_list_no_dupes if not is_duplicated_postponed(content, full_board)
+    return sum(
+        result['bonus'] for content in round_finished_list.values()
         for result in content['results'] if result['user']['id'] == team_id and 'bonus' in result
-    ))
-
-
-def is_movement_round_finished(movement):
-    return movement['type'] == 'roundFinished'
-
-
-def is_duplicated_postponed(round_finished, full_board):
-    return any(round_finished for movement in full_board
-               if is_movement_round_finished(movement) and
-               movement['content']['round']['name'].startswith(round_finished['round']['name'] + ' '))
+    )
 
 
 def day_before(millis_date):
@@ -313,7 +304,6 @@ def analyze_teams():
         print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
               f'{money(max_overbid_player["overbid"])} '
               f'({max_overbid_player["overbidPercent"]:.2f}%)')
-
         print('#' * 64)
 
         for playerData in players_data:
