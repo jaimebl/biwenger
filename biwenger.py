@@ -1,7 +1,8 @@
 from biwengerClient import BiwengerClient
-from config_parser import properties, load_config
+from config_parser import properties
 
-from sys import argv
+from tabulate import tabulate
+from argparse import ArgumentParser
 from statistics import mean
 from functools import reduce
 from datetime import datetime, timedelta
@@ -121,7 +122,6 @@ def pretty_date(time=False):
     pretty string like 'an hour ago', 'Yesterday', '3 months ago',
     'just now', etc
     """
-    from datetime import datetime
     now = datetime.now()
     if type(time) is int:
         diff = now - datetime.fromtimestamp(time)
@@ -159,6 +159,10 @@ def pretty_date(time=False):
     return str(round(day_diff / 365)) + " years ago"
 
 
+def full_pretty_date(time):
+    return f'{pretty_date(time)} ({millis_to_date(time)})'
+
+
 # def team_value_by_date(team, date):
 #     teamPlayers = [player['id'] for player in team['players']]
 #
@@ -193,12 +197,13 @@ def get_player_cash(team, full_board):
 
 
 def get_player_price(player, date):
-    return next(price[1] for price in bClient.player(player['id'])['prices'] if price[0] == date)
+    # return next(price[1] for price in bClient.player(player['id'])['prices'] if price[0] == date)
+    return next(price[1] for price in player['prices'] if price[0] == date)
 
 
 def get_global_player_performance(player):
-    avg_points_home = float(player['pointsHome'] / player['playedHome']) if player['playedHome'] != 0 else 0.0
-    avg_points_away = float(player['pointsAway'] / player['playedAway']) if player['playedAway'] != 0 else 0.0
+    avg_points_home = float(player['pointsHome'] / player['playedHome']) if player['playedHome'] else 0.0
+    avg_points_away = float(player['pointsAway'] / player['playedAway']) if player['playedAway'] else 0.0
 
     return (avg_points_home + avg_points_away) / 2
 
@@ -209,10 +214,12 @@ def is_next_match_home(team):
 
 def get_global_next_player_performance(player):
     team = player['team']
+    if not team:
+        return 0.0
     if is_next_match_home(team):
-        return float(player['pointsHome'] / player['playedHome']) if player['playedHome'] != 0 else 0.0
+        return float(player['pointsHome'] / player['playedHome']) if player['playedHome'] else 0.0
     else:
-        return float(player['pointsAway'] / player['playedAway']) if player['playedAway'] != 0 else 0.0
+        return float(player['pointsAway'] / player['playedAway']) if player['playedAway'] else 0.0
 
 
 def get_recent_player_performance(player):
@@ -228,7 +235,7 @@ def players_ranking():
     full_board = bClient.full_board()
     league = bClient.league()
 
-    ranking = []
+    players = []
     for standing in league['standings']:
         team = bClient.team(standing['id'])
 
@@ -239,21 +246,23 @@ def players_ranking():
 
         max_bid = cash + (team_value / 4)
 
-        ranking.append({'name': team['name'], 'cash': cash, 'teamValue': team_value, 'totalValue': cash + team_value,
+        players.append({'name': team['name'], 'cash': cash, 'teamValue': team_value, 'totalValue': cash + team_value,
                         'maxBid': max_bid, 'dailyIncrement': daily_increment, 'lastAccess': team['lastAccess']})
 
-    ranking.sort(key=lambda x: x['totalValue'], reverse=True)
-    print(f'{"Name":^16s}|\t{"Total Value":^12s}|\t{"Team Value":^12s}|'
-          f'\t{"Cash":^12s}|\t{"Max Bid":^12s}|\t{"Daily Inc":^10s}|\t{"Last Access":^37s}|')
+    players.sort(key=lambda x: x['totalValue'], reverse=True)
 
-    for player in ranking:
-        print(f'{player["name"]:^16s}|'
-              f'\t{money(player["totalValue"]):>12s}|'
-              f'\t{money(player["teamValue"]):>12s}|'
-              f'\t{money(player["cash"]):>12s}|'
-              f'\t{money(player["maxBid"]):>12s}|'
-              f'\t{money(player["dailyIncrement"]):>10s}|'
-              f'\t{pretty_date(player["lastAccess"]):>15s} ({millis_to_date(player["lastAccess"])})|')
+    print_data = [[player["name"],
+                   money(player["totalValue"]),
+                   money(player["teamValue"]),
+                   money(player["cash"]),
+                   money(player["maxBid"]),
+                   money(player["dailyIncrement"]),
+                   full_pretty_date(player["lastAccess"])]
+                  for player in players]
+
+    print(tabulate(print_data,
+                   headers=['Name', 'Total Value', 'Team Value', 'Cash', 'Max Bid', 'Daily Inc', 'Last Access'],
+                   tablefmt='orgtbl', stralign='right'))
 
 
 def analyze_teams():
@@ -268,7 +277,7 @@ def analyze_teams():
 
         players = [bClient.player(player['id']) for player in team['players']]
 
-        max_overbid_player = get_maximum_overbid_player(team_id, full_board)
+        # max_overbid_player = get_maximum_overbid_player(team_id, full_board)
 
         cash = get_player_cash(team, full_board)
         team_value = [standing['teamValue'] for standing in league['standings'] if standing['id'] == team_id][0]
@@ -306,9 +315,9 @@ def analyze_teams():
         print(f'Jugadores Vendidos: {money(sold_players_amount)}')
         print(f'\tJugadores Comprados: {money(bought_players_amount)}')
         print(f'\tPremios: {money(awards_amount)}')
-        print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
-              f'{money(max_overbid_player["overbid"])} '
-              f'({max_overbid_player["overbidPercent"]:.2f}%)')
+        # print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
+        #       f'{money(max_overbid_player["overbid"])} '
+        #       f'({max_overbid_player["overbidPercent"]:.2f}%)')
         print('#' * 64)
 
         for playerData in players_data:
@@ -407,7 +416,7 @@ def get_player_price_yesterday(player):
 
 def analyze_offers():
     offers = [{**offer, 'player': player,
-               'offerPercentage': offer_percentage(get_player_price_yesterday(player), offer['amount'])}
+               'offerPercentage': offer_percentage(player["price"], offer['amount'])}
               for offer in bClient.market()['offers'] if offer['type'] == 'purchase' and 'fromID' in offer
               for player in bClient.players(offer['requestedPlayers'])]
 
@@ -415,7 +424,7 @@ def analyze_offers():
 
     for offer in offers:
         print(f'{offer["player"]["name"]:^20s}'
-              f'\t{money(offer["amount"]):>13s}({money(offer["amount"] - get_player_price_yesterday(offer["player"])):>10s})'
+              f'\t{money(offer["amount"]):>13s}({money(offer["amount"] - offer["player"]["price"]):>10s})'
               f'\t{millis_to_date(offer["until"])}'
               f'\t{offer["offerPercentage"]:>6.2f}%')
 
@@ -438,8 +447,20 @@ def analyze_my_players_value():
         print('')
 
 
+def parse_args():
+    parser = ArgumentParser(description='Analyze data retrieved from biwenger and prints a report.')
+    parser.add_argument("operation", help="an operation to execute", type=str, metavar=('op'),
+                        choices=['players_ranking',
+                                 'analyze_teams',
+                                 'analyze_offers',
+                                 'analyze_my_players_value',
+                                 'trade_history'])
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    load_config()
+    args = parse_args()
+    # load_config()
     bClient = BiwengerClient()
-    operation = argv[1]
-    locals()[operation]()
+    locals()[args.operation]()
+    print(f'Requests: {bClient.num_requests} ({bClient.num_cached_requests} cached)')

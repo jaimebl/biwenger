@@ -3,7 +3,7 @@ Analyze biwenger leagues through a python script
 
 #### Usage
 
-```$python biwenger.py players_ranking```
+**`$python biwenger.py players_ranking`**
 
 ```
 |             Name |   Total Value |   Team Value |        Cash |      Max Bid |   Daily Inc |                        Last Access |
@@ -17,7 +17,7 @@ Analyze biwenger leagues through a python script
 |             Javi |   €73,129,991 |  €44,980,000 | €28,149,991 |  €39,394,991 |    €280,000 | 4 months ago (2019-10-22 19:05:08) |
 |    Pablo Tenorio |   €71,363,910 |  €63,520,000 |  €7,843,910 |  €23,723,910 |    €250,000 |  1 weeks ago (2020-02-04 18:46:52) |
 ```
-```$python biwenger.py analyze_offers```
+**`$python biwenger.py analyze_offers`**
 
 ```
   Frenkie de Jong   	   €8,711,400(  €411,400)	2020-02-14 06:00:00	  4.96%
@@ -28,7 +28,7 @@ Requests: 5 (4 cached)
 ```
 
 
-```$python biwenger.py analyze_teams```
+**`$python biwenger.py analyze_teams`**
 
 ```
 
@@ -88,7 +88,7 @@ Requests: 5 (4 cached)
 ...
 ```
 
-```$python biwenger.py trade_history```
+**`$python biwenger.py trade_history`**
 ```
 			<< Palo de Churrero >>
 
