@@ -270,7 +270,6 @@ def analyze_teams():
     league = bClient.league()
 
     for standing in league['standings']:
-        print(f'\n\t\t\t<< {standing["name"]} >>\n')
 
         team = bClient.team(standing['id'])
         team_id = int(team['id'])
@@ -311,30 +310,39 @@ def analyze_teams():
         # players_data.sort(key=lambda x: x['priceIncrementRelative'], reverse=True)
         players_data.sort(key=lambda x: x['performance_calculated_next'], reverse=True)
 
-        print('#' * 64)
-        print(f'Jugadores Vendidos: {money(sold_players_amount)}')
-        print(f'\tJugadores Comprados: {money(bought_players_amount)}')
-        print(f'\tPremios: {money(awards_amount)}')
+        header = [
+            f'\n\t\t\t<< {standing["name"]} >>\n',
+            '#' * 64,
+            f'\tJugadores Vendidos: {money(sold_players_amount)}',
+            f'\tJugadores Comprados: {money(bought_players_amount)}',
+            f'\tPremios: {money(awards_amount)}',
+            '#' * 64,
+        ]
+
+        content = [f'{player_data["name"]:^20s} {POSITIONS[player_data["position"]]} '
+                   f'\t{money(player_data["price"]):>12s}'
+                   f'\t{money(player_data["priceIncrement"]):>9s}'
+                   f'\t{player_data["priceIncrementRelative"]:>6.2f}%'
+                   f'\t{player_data["performance_avg_global"]:>6.2f}({player_data["performance_avg_global_next"]:.2f})'
+                   f'\t{player_data["performance_avg_recent"]:>6.2f}'
+                   f'\t{player_data["performance_calculated"]:>6.2f}({player_data["performance_calculated_next"]:.2f})'
+                   for player_data in players_data]
+
+        footer = [
+            '#' * 64,
+            f'\tCaja: {money(cash)} (Maxima puja: {money(max_bid)})',
+            f'\tValor de equipo: {money(team_value)}',
+            f'\tIncremento diario: {money(daily_total_increment)}',
+            f'\tTotal: {money(cash + team_value)}',
+            '#' * 64
+        ]
+
         # print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
         #       f'{money(max_overbid_player["overbid"])} '
         #       f'({max_overbid_player["overbidPercent"]:.2f}%)')
-        print('#' * 64)
 
-        for playerData in players_data:
-            print(f'{playerData["name"]:^20s} {POSITIONS[playerData["position"]]} '
-                  f'\t{money(playerData["price"]):>12s}'
-                  f'\t{money(playerData["priceIncrement"]):>9s}'
-                  f'\t{playerData["priceIncrementRelative"]:>6.2f}%'
-                  f'\t{playerData["performance_avg_global"]:>6.2f}({playerData["performance_avg_global_next"]:.2f})'
-                  f'\t{playerData["performance_avg_recent"]:>6.2f}'
-                  f'\t{playerData["performance_calculated"]:>6.2f}({playerData["performance_calculated_next"]:.2f})')
+        print('\n'.join(header + content + footer), end='\n\n')
 
-        print('#' * 64)
-        print(f'\tCaja: {money(cash)} (Maxima puja: {money(max_bid)})')
-        print(f'\tValor de equipo: {money(team_value)}')
-        print(f'\tIncremento diario: {money(daily_total_increment)}')
-        print(f'\tTotal: {money(cash + team_value)}')
-        print('#' * 64, end='\n\n')
 
 
 def is_team_movement(content, team_id):
