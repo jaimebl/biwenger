@@ -3,6 +3,8 @@ Analyze biwenger leagues through a python script
 
 #### Usage
 
+#####- Fill your config.properties accordingly
+
 **`$python biwenger.py players_ranking`**
 
 ```
