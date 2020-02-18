@@ -96,17 +96,8 @@ def get_maximum_overbid_player(team_id, full_board):
     return {**maximum_overbid_player, 'player': bClient.player(maximum_overbid_player['player'])}
 
 
-def money(number):
-    return "€%s" % group(number)
-
-
-def group(number):
-    s = '%d' % number
-    groups = []
-    while s and s[-1].isdigit():
-        groups.append(s[-3:])
-        s = s[:-3]
-    return s + ','.join(reversed(groups))
+def money(amount):
+    return f'€{amount:0,.0f}'
 
 
 def millis_to_date(millis):
@@ -228,7 +219,6 @@ def analyze_teams():
     league = bClient.league()
 
     for standing in league['standings']:
-
         team = bClient.team(standing['id'])
         team_id = int(team['id'])
 
@@ -245,8 +235,6 @@ def analyze_teams():
 
         max_bid = cash + (team_value / 4)
 
-        # yesterday = date.today() - timedelta(days=1)
-        # diffTeamValue = team_value_by_date(team, date.today()) - team_value_by_date(team, yesterday)
         daily_total_increment = reduce(lambda x, y: x + y['priceIncrement'], players, 0)
 
         players_data = [{
@@ -265,7 +253,6 @@ def analyze_teams():
                  get_recent_player_performance(player)) / 3,
         }
             for player in players]
-        # players_data.sort(key=lambda x: x['priceIncrementRelative'], reverse=True)
         players_data.sort(key=lambda x: x['performance_calculated_next'], reverse=True)
 
         header = [
@@ -296,11 +283,10 @@ def analyze_teams():
         ]
 
         # print(f'\tMax Overbid: {max_overbid_player["player"]["name"]} - '
-        #       f'{money(max_overbid_player["overbid"])} '
+        #       f'{format_money(max_overbid_player["overbid"])} '
         #       f'({max_overbid_player["overbidPercent"]:.2f}%)')
 
         print('\n'.join(header + content + footer), end='\n\n')
-
 
 
 def is_team_movement(content, team_id):
@@ -426,7 +412,6 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    # load_config()
     bClient = BiwengerClient()
     locals()[args.operation]()
     print(f'Requests: {bClient.num_requests} ({bClient.num_cached_requests} cached)')
