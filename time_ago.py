@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 def pretty_time_ago(time=False):
     """
     Get a datetime object or a int() Epoch timestamp and return a

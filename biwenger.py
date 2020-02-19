@@ -312,7 +312,6 @@ def trade_history():
     league = bClient.league()
 
     for standing in league['standings']:
-        print(f'\n\t\t\t<< {standing["name"]} >>\n')
         team = bClient.team(standing['id'])
         join_date = millis_to_formatted_date(team['joinDate'])
 
@@ -348,18 +347,25 @@ def trade_history():
 
         history.sort(key=lambda x: x['sellAmount'] - x['buyAmount'], reverse=True)
 
-        print(f'{"Player":>26s}{"Initial":>14s}{"Final":>14s}{"Profit":>14s}')
-
-        for history_player in history:
-            print(f'{history_player["player"]["name"]:>22s}{"(x)" if history_player["owned"] else "":4s}'
-                  f'{money(history_player["buyAmount"]):>14s}'
-                  f'{money(history_player["sellAmount"]):>14s}'
-                  f'{money(history_player["sellAmount"] - history_player["buyAmount"]):>14s}')
-
         total = sum([history_player['sellAmount'] - history_player['buyAmount']
                      for history_player in history])
 
-        print(f'Total: {money(total):>11s}')
+        header = [
+            f'\n\t\t\t<< {standing["name"]} >>\n',
+            f'{"Player":>26s}{"Initial":>14s}{"Final":>14s}{"Profit":>14s}'
+        ]
+
+        content = [f'{history_player["player"]["name"]:>22s}{"(x)" if history_player["owned"] else "":4s}'
+                   f'{money(history_player["buyAmount"]):>14s}'
+                   f'{money(history_player["sellAmount"]):>14s}'
+                   f'{money(history_player["sellAmount"] - history_player["buyAmount"]):>14s}'
+                   for history_player in history]
+
+        footer = [
+            f'Total: {money(total):>11s}'
+        ]
+
+        print('\n'.join(header + content + footer))
 
 
 def get_player_price_yesterday(player):
